@@ -134,6 +134,17 @@
   /* Spinner */
   @keyframes spin { to { transform: rotate(360deg); } }
   .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid #333; border-top-color: #888; border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 6px; vertical-align: middle; }
+
+  /* Modal */
+  .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .modal { background: #0e0e0e; border: 1px solid #2a2a2a; border-radius: 10px; padding: 28px; max-width: 480px; width: 100%; }
+  .modal-icon { font-size: 22px; margin-bottom: 14px; opacity: 0.5; }
+  .modal-title { font-size: 13px; font-weight: 500; color: #e8e4dc; margin-bottom: 10px; letter-spacing: 0.05em; }
+  .modal-body { font-size: 11px; color: #555; line-height: 1.8; margin-bottom: 20px; }
+  .modal-body a { color: #7a7a7a; text-decoration: none; border-bottom: 1px solid #333; }
+  .modal-body strong { color: #888; font-weight: 500; }
+  .modal-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .tag-author { border-color: #1a2a3a; color: #2a5a7a; }
 </style>
 </head>
 <body>
@@ -208,6 +219,11 @@
       <label class="lbl">Notes <span style="color:#282828">(optional)</span></label>
       <textarea id="add-notes" rows="3" placeholder="Settings, observations, what worked..."></textarea>
     </div>
+    <div class="form-section">
+      <label class="lbl">Your name <span style="color:#282828">(optional)</span></label>
+      <input type="text" id="add-author" placeholder="e.g. Marco, @yourhandle...">
+      <div class="hint">Shown on the card if your preset gets featured on the platform.</div>
+    </div>
     <div class="action-row">
       <button class="btn btn-primary" onclick="saveNewPreset()">Save Preset</button>
       <button class="btn" onclick="showView('library')">Cancel</button>
@@ -259,6 +275,10 @@
     <div class="form-section">
       <label class="lbl">Notes <span style="color:#282828">(optional)</span></label>
       <textarea id="edit-notes" rows="3"></textarea>
+    </div>
+    <div class="form-section">
+      <label class="lbl">Author <span style="color:#282828">(optional)</span></label>
+      <input type="text" id="edit-author" placeholder="e.g. Gerardo, @yourhandle...">
     </div>
     <div class="action-row">
       <button class="btn btn-primary" onclick="saveEditPreset()">Save Changes</button>
@@ -391,6 +411,24 @@
         </a>
         then enter just the filename (e.g. <code style="color:#555">my-video.gif</code>) in the preset form. Upload your presets JSON as <code style="color:#555">prompt-vault-export.json</code> to the repo root to enable auto-sync.
       </p>
+    </div>
+  </div>
+</div>
+
+<!-- + Add modal -->
+<div id="add-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeAddModal()">
+  <div class="modal">
+    <div class="modal-icon">◎</div>
+    <div class="modal-title">Your presets are saved locally</div>
+    <div class="modal-body">
+      Anything you create here is saved in <strong>your browser only</strong> — it won't appear on the platform for others.<br><br>
+      To keep your presets safe across devices and browsers, go to <strong>Settings → Export JSON</strong> and save the file to your computer.<br><br>
+      Want your presets featured on the platform for everyone to use? Send your exported JSON to<br>
+      <a href="mailto:gerardoschiavone92@gmail.com">gerardoschiavone92@gmail.com</a> — if selected, your name will appear as creator on every card.
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="closeAddModal()">Got it, continue</button>
+      <button class="btn" onclick="closeAddModal(); showView('settings','settings')">Go to Settings</button>
     </div>
   </div>
 </div>
@@ -565,11 +603,12 @@ function cardHTML(p) {
   }
 
   const date = new Date(p.createdAt).toLocaleDateString();
+  const authorTag = p.author ? `<span class="tag tag-author">by ${escHtml(p.author)}</span>` : '';
   return `
     <div class="card" data-id="${p.id}">
       ${thumbHTML}
       <div class="card-body" onclick="openDetail('${p.id}')">
-        <div>${tagHTML(p.tool)}<span class="tag tag-neutral">${p.shotType}</span></div>
+        <div>${tagHTML(p.tool)}<span class="tag tag-neutral">${p.shotType}</span>${authorTag}</div>
         <div class="card-title">${escHtml(p.title)}</div>
         <div class="card-snippet">${escHtml(p.prompt)}</div>
         <div class="card-meta">${date}</div>
@@ -587,7 +626,12 @@ function escHtml(str) {
 
 // ── ADD ──────────────────────────────────────────────────────────
 function openAdd() {
-  ['add-title','add-gif','add-yt','add-prompt','add-refimage','add-notes'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('add-modal').style.display = 'flex';
+}
+
+function closeAddModal() {
+  document.getElementById('add-modal').style.display = 'none';
+  ['add-title','add-gif','add-yt','add-prompt','add-refimage','add-notes','add-author'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
   document.getElementById('add-tool').value = 'Seedance';
   document.getElementById('add-shot').value = 'Wide';
   document.getElementById('add-gif-hint').textContent = '';
@@ -610,6 +654,7 @@ function saveNewPreset() {
     prompt,
     refImage: document.getElementById('add-refimage').value.trim(),
     notes: document.getElementById('add-notes').value.trim(),
+    author: document.getElementById('add-author').value.trim(),
     createdAt: new Date().toISOString()
   };
   allPresets.unshift(preset);
@@ -628,6 +673,7 @@ function openEdit() {
   document.getElementById('edit-prompt').value = p.prompt || '';
   document.getElementById('edit-refimage').value = p.refImage || '';
   document.getElementById('edit-notes').value = p.notes || '';
+  document.getElementById('edit-author').value = p.author || '';
   document.getElementById('edit-gif-hint').textContent = '';
   document.getElementById('edit-yt-hint').textContent = '';
   const prev = document.getElementById('edit-gif-preview');
@@ -649,6 +695,7 @@ function saveEditPreset() {
     prompt,
     refImage: document.getElementById('edit-refimage').value.trim(),
     notes: document.getElementById('edit-notes').value.trim(),
+    author: document.getElementById('edit-author').value.trim(),
   };
   allPresets = allPresets.map(p => p.id === updated.id ? updated : p);
   persistPresets();
@@ -679,7 +726,7 @@ function openDetail(id) {
 
   // Meta
   document.getElementById('detail-meta').innerHTML = `
-    ${tagHTML(p.tool)}<span class="tag tag-neutral">${p.shotType}</span>
+    ${tagHTML(p.tool)}<span class="tag tag-neutral">${p.shotType}</span>${p.author ? `<span class="tag tag-author">by ${escHtml(p.author)}</span>` : ''}
     <span class="detail-date">${new Date(p.createdAt).toLocaleDateString()}</span>`;
 
   // Prompt
