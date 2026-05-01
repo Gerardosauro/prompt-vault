@@ -35,7 +35,8 @@
 
   /* Search row */
   .search-row { display: flex; gap: 10px; margin-bottom: 16px; }
-  .search-row input { flex: 1; }
+  .search-row input { flex: 3; min-width: 0; }
+  .search-row select { flex: 1; min-width: 120px; max-width: 180px; width: auto; }
 
   /* Grid */
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
@@ -143,13 +144,13 @@
 </div>
 
 <div id="view-library" class="view active">
+  <div id="sync-banner" style="display:none;background:#0f1a0f;border-bottom:1px solid #1a2a1a;padding:8px 22px;font-size:10px;color:#3a7a3a;letter-spacing:0.1em;"></div>
   <div class="body">
     <div class="search-row">
       <input type="text" id="search-input" placeholder="Search..." oninput="filterPresets()">
       <select id="tool-filter" onchange="filterPresets()">
         <option value="All">All tools</option>
-        <option>Seedance</option><option>Kling</option><option>GoFun</option>
-        <option>Higgsfield</option><option>ComfyUI</option><option>Other</option>
+        <option>Seedance</option><option>Kling</option><option>ComfyUI Wan2.2</option><option>Other</option>
       </select>
     </div>
     <div id="preset-count" class="count"></div>
@@ -172,8 +173,7 @@
       <div>
         <label class="lbl">Tool</label>
         <select id="add-tool">
-          <option>Seedance</option><option>Kling</option><option>GoFun</option>
-          <option>Higgsfield</option><option>ComfyUI</option><option>Other</option>
+          <option>Seedance</option><option>Kling</option><option>ComfyUI Wan2.2</option><option>Other</option>
         </select>
       </div>
       <div>
@@ -225,8 +225,7 @@
       <div>
         <label class="lbl">Tool</label>
         <select id="edit-tool">
-          <option>Seedance</option><option>Kling</option><option>GoFun</option>
-          <option>Higgsfield</option><option>ComfyUI</option><option>Other</option>
+          <option>Seedance</option><option>Kling</option><option>ComfyUI Wan2.2</option><option>Other</option>
         </select>
       </div>
       <div>
@@ -361,6 +360,14 @@
     </div>
 
     <div class="settings-panel">
+      <div class="settings-title">GitHub Sync</div>
+      <p style="font-size:11px;color:#3a3a3a;margin-bottom:12px;line-height:1.6">
+        On startup the vault automatically loads any new presets from <code style="color:#555">prompt-vault-export.json</code> in your GitHub repo. To publish your local presets: export JSON below, then upload it to your repo root.
+      </p>
+      <button class="btn btn-primary" onclick="syncFromGitHub().then(()=>{ const b=document.getElementById('sync-banner'); if(b) b.style.display='block'; })">Sync from GitHub now</button>
+    </div>
+
+    <div class="settings-panel">
       <div class="settings-title">Export / Import Presets</div>
       <p style="font-size:11px;color:#3a3a3a;margin-bottom:12px;line-height:1.6">
         Download all your presets as a JSON backup, or import from a previous export.
@@ -382,7 +389,7 @@
         <a href="https://github.com/Gerardosauro/prompt-vault/tree/main/gifs" target="_blank" style="color:#555;text-decoration:none">
           github.com/Gerardosauro/prompt-vault/tree/main/gifs
         </a>
-        then enter the filename (e.g. <code style="color:#555">my-video.gif</code>) in the preset form.
+        then enter just the filename (e.g. <code style="color:#555">my-video.gif</code>) in the preset form. Upload your presets JSON as <code style="color:#555">prompt-vault-export.json</code> to the repo root to enable auto-sync.
       </p>
     </div>
   </div>
@@ -390,8 +397,9 @@
 
 <script>
 const GIF_BASE = 'https://cdn.jsdelivr.net/gh/Gerardosauro/prompt-vault@main/gifs/';
-const TOOLS = ['Seedance','Kling','GoFun','Higgsfield','ComfyUI','Other'];
-const TOOL_COLORS = { Seedance:'#1D9E75', Kling:'#7F77DD', GoFun:'#D85A30', Higgsfield:'#BA7517', ComfyUI:'#378ADD', Other:'#888780' };
+const PRESETS_URL = 'https://cdn.jsdelivr.net/gh/Gerardosauro/prompt-vault@main/prompt-vault-export.json';
+const TOOLS = ['Seedance','Kling','ComfyUI Wan2.2','Other'];
+const TOOL_COLORS = { Seedance:'#1D9E75', Kling:'#7F77DD', 'ComfyUI Wan2.2':'#378ADD', Other:'#888780' };
 
 let allPresets = [];
 let currentPreset = null;
@@ -812,9 +820,29 @@ function importPresets(event) {
   reader.readAsText(file);
 }
 
+// ── GITHUB AUTO-LOAD ─────────────────────────────────────────────
+async function syncFromGitHub() {
+  try {
+    const res = await fetch(PRESETS_URL + '?t=' + Date.now()); // bust cache
+    if (!res.ok) return; // no file yet, skip silently
+    const remote = await res.json();
+    if (!Array.isArray(remote)) return;
+    const existing = new Set(allPresets.map(p => p.id));
+    const newOnes = remote.filter(p => !existing.has(p.id));
+    if (newOnes.length > 0) {
+      allPresets = [...allPresets, ...newOnes];
+      persistPresets();
+      renderGrid();
+      const banner = document.getElementById('sync-banner');
+      if (banner) { banner.textContent = `↓ ${newOnes.length} new preset${newOnes.length > 1 ? 's' : ''} loaded from GitHub`; banner.style.display = 'block'; setTimeout(() => banner.style.display = 'none', 4000); }
+    }
+  } catch { /* network error, skip silently */ }
+}
+
 // ── INIT ─────────────────────────────────────────────────────────
 loadPresets();
 showView('library');
+syncFromGitHub();
 </script>
 </body>
 </html>
