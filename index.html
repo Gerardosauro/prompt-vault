@@ -598,7 +598,7 @@ function cardHTML(p) {
     thumbHTML = `
       <div class="thumb">
         <img src="${gifUrl}" alt="" onerror="this.style.display='none'">
-        <div class="thumb-badge">GIF</div>
+        <div class="thumb-badge" style="display:none"></div>
         ${ytId ? `<a class="thumb-yt" href="${p.youtubeUrl}" target="_blank" onclick="event.stopPropagation()"><span class="thumb-yt-icon">▶</span> YouTube</a>` : ''}
       </div>`;
   } else if (ytId) {
