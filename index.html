@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prompt Vault</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0a0a; color: #e8e4dc; font-family: 'DM Mono', 'Courier New', monospace; min-height: 100vh; }
+  a { color: inherit; }
+
+  /* Header */
+  #header { border-bottom: 1px solid #1a1a1a; padding: 14px 22px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: #0a0a0a; z-index: 10; }
+  .logo { font-size: 11px; letter-spacing: 0.2em; color: #3a3a3a; text-transform: uppercase; }
+  .logo span { color: #e8e4dc; }
+  .nav { display: flex; gap: 8px; }
+
+  /* Buttons */
+  .btn { background: #141414; color: #888; border: 1px solid #202020; padding: 7px 14px; border-radius: 4px; font-size: 10px; letter-spacing: 0.1em; cursor: pointer; text-transform: uppercase; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+  .btn:hover { background: #1e1e1e; }
+  .btn-primary { background: #dedad2; color: #0a0a0a; border-color: transparent; }
+  .btn-primary:hover { background: #cec9c1; }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-danger { background: #200a0a; color: #bb3333; border-color: #2e1010; }
+  .btn-danger:hover { background: #2e1010; }
+  .btn-yt { background: #0f0f0f; color: #cc3333; border-color: #2a1010; }
+  .btn-yt:hover { background: #1a0a0a; }
+  .btn-nav { background: transparent; border: 1px solid transparent; color: #444; }
+  .btn-nav.active { background: #1a1a1a; border-color: #2a2a2a; color: #e8e4dc; }
+  .btn-nav:hover { color: #e8e4dc; }
+
+  /* Body */
+  .body { padding: 18px 22px; }
+  .body-narrow { padding: 18px 22px; max-width: 600px; }
+
+  /* Search row */
+  .search-row { display: flex; gap: 10px; margin-bottom: 16px; }
+  .search-row input { flex: 1; }
+
+  /* Grid */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+
+  /* Card */
+  .card { background: #0e0e0e; border: 1px solid #1a1a1a; border-radius: 8px; overflow: hidden; transition: border-color 0.15s; }
+  .card:hover { border-color: #2a2a2a; }
+  .card-body { padding: 11px 13px 8px; cursor: pointer; }
+  .card-title { font-size: 13px; font-weight: 500; color: #ccc8c0; margin: 7px 0 4px; line-height: 1.3; }
+  .card-snippet { font-size: 10px; color: #2a2a2a; line-height: 1.5; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin-bottom: 10px; }
+  .card-meta { font-size: 10px; color: #242424; }
+  .card-actions { display: flex; gap: 6px; padding: 0 13px 12px; border-top: 1px solid #141414; padding-top: 10px; }
+
+  /* Thumbnail */
+  .thumb { position: relative; width: 100%; padding-top: 56.25%; background: #080808; overflow: hidden; }
+  .thumb img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.85; transition: opacity 0.2s; }
+  .card:hover .thumb img { opacity: 1; }
+  .thumb-empty { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+  .thumb-empty-icon { font-size: 22px; opacity: 0.07; }
+  .thumb-empty-label { font-size: 9px; color: #1e1e1e; letter-spacing: 0.1em; }
+  .thumb-badge { position: absolute; top: 7px; left: 7px; background: rgba(0,0,0,0.7); border: 1px solid rgba(255,255,255,0.1); border-radius: 3px; padding: 2px 6px; font-size: 9px; letter-spacing: 0.1em; color: rgba(255,255,255,0.4); }
+  .thumb-yt { position: absolute; bottom: 7px; right: 7px; display: flex; align-items: center; gap: 5px; background: rgba(0,0,0,0.75); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 4px 10px; text-decoration: none; color: rgba(255,255,255,0.6); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0; transition: opacity 0.2s; }
+  .card:hover .thumb-yt { opacity: 1; }
+  .thumb-yt-icon { color: #cc3333; }
+
+  /* Tags */
+  .tag { display: inline-block; font-size: 9px; letter-spacing: 0.12em; border-radius: 3px; text-transform: uppercase; margin-right: 5px; padding: 2px 7px; border: 1px solid; }
+  .tag-neutral { border-color: #1e1e1e; color: #2e2e2e; }
+
+  /* Form */
+  .form-section { margin-bottom: 16px; }
+  label.lbl { font-size: 10px; letter-spacing: 0.15em; color: #3a3a3a; text-transform: uppercase; display: block; margin-bottom: 5px; }
+  input, textarea, select { width: 100%; background: #0e0e0e; border: 1px solid #1e1e1e; border-radius: 6px; padding: 9px 11px; color: #e8e4dc; font-size: 12px; font-family: inherit; outline: none; }
+  input:focus, textarea:focus, select:focus { border-color: #333; }
+  textarea { resize: vertical; }
+  .hint { font-size: 10px; color: #2a2a2a; margin-top: 4px; }
+  .hint-ok { color: #205020; }
+  .hint-err { color: #5a2020; }
+  .form-row { display: flex; gap: 12px; margin-bottom: 16px; }
+  .form-row > div { flex: 1; }
+  .action-row { display: flex; gap: 10px; align-items: center; }
+
+  /* Prompt box */
+  .prompt-box { background: #0c0c0c; border: 1px solid #181818; border-radius: 6px; padding: 13px 15px; font-size: 12px; line-height: 1.8; color: #777; white-space: pre-wrap; word-break: break-word; font-family: inherit; }
+  .prompt-box-adapted { border-color: #182018; }
+  .prompt-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 7px; }
+
+  /* Detail preview */
+  .detail-preview { position: relative; width: 100%; padding-top: 56.25%; background: #080808; border-radius: 8px; overflow: hidden; margin-bottom: 16px; }
+  .detail-preview img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+  .detail-preview-yt { position: absolute; bottom: 10px; right: 10px; display: flex; align-items: center; gap: 6px; background: rgba(0,0,0,0.78); border: 1px solid rgba(255,255,255,0.12); border-radius: 16px; padding: 6px 14px; text-decoration: none; color: rgba(255,255,255,0.7); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; }
+
+  /* Divider */
+  .divider { border-top: 1px solid #141414; margin: 18px 0; }
+
+  /* Modifier panel */
+  .modifier { background: #0c0c0c; border: 1px solid #181818; border-radius: 8px; padding: 16px; }
+  .modifier-title { font-size: 10px; letter-spacing: 0.18em; color: #4a4a4a; text-transform: uppercase; margin-bottom: 14px; }
+  .chip-row { margin-bottom: 10px; }
+  .chip-row-label { font-size: 9px; color: #282828; letter-spacing: 0.1em; margin-bottom: 5px; }
+  .chip { display: inline-block; font-size: 9px; letter-spacing: 0.1em; padding: 2px 7px; border-radius: 3px; margin-right: 4px; margin-bottom: 4px; border: 1px solid; }
+  .chip-locked { border-color: #2e1212; color: #5a2020; }
+  .chip-swap { border-color: #122012; color: #205020; }
+
+  /* Settings panel */
+  .settings-panel { background: #0c0c0c; border: 1px solid #181818; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+  .settings-title { font-size: 10px; letter-spacing: 0.18em; color: #4a4a4a; text-transform: uppercase; margin-bottom: 14px; }
+  .api-key-row { display: flex; gap: 8px; }
+  .api-key-row input { flex: 1; font-family: monospace; letter-spacing: 0.05em; }
+  .api-status { font-size: 10px; margin-top: 6px; }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 60px 0; color: #222; }
+  .empty-icon { font-size: 26px; opacity: 0.1; margin-bottom: 10px; }
+  .empty-label { font-size: 11px; letter-spacing: 0.15em; }
+  .empty-sub { font-size: 10px; color: #1e1e1e; margin-top: 6px; }
+
+  /* Count */
+  .count { font-size: 10px; color: #242424; margin-bottom: 12px; letter-spacing: 0.1em; }
+
+  /* GIF preview in form */
+  .gif-preview { width: 100%; border-radius: 6px; margin-top: 8px; border: 1px solid #1a1a1a; display: block; }
+
+  /* Detail meta */
+  .detail-meta { margin-bottom: 12px; }
+  .detail-date { font-size: 10px; color: #242424; }
+
+  /* Sections in detail */
+  .detail-section { margin-bottom: 16px; }
+
+  /* Views */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* Spinner */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid #333; border-top-color: #888; border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 6px; vertical-align: middle; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <span class="logo"><span>VAULT</span> / <span id="header-subtitle">prompts</span></span>
+  <div class="nav" id="nav-btns"></div>
+</div>
+
+<div id="view-library" class="view active">
+  <div class="body">
+    <div class="search-row">
+      <input type="text" id="search-input" placeholder="Search..." oninput="filterPresets()">
+      <select id="tool-filter" onchange="filterPresets()">
+        <option value="All">All tools</option>
+        <option>Seedance</option><option>Kling</option><option>GoFun</option>
+        <option>Higgsfield</option><option>ComfyUI</option><option>Other</option>
+      </select>
+    </div>
+    <div id="preset-count" class="count"></div>
+    <div id="preset-grid" class="grid"></div>
+    <div id="empty-state" class="empty" style="display:none">
+      <div class="empty-icon">◎</div>
+      <div class="empty-label" id="empty-label">NO PRESETS YET</div>
+      <div class="empty-sub" id="empty-sub">Hit + Add to save your first prompt</div>
+    </div>
+  </div>
+</div>
+
+<div id="view-add" class="view">
+  <div class="body-narrow">
+    <div class="form-section">
+      <label class="lbl">Title</label>
+      <input type="text" id="add-title" placeholder="e.g. Freefall through Valletta">
+    </div>
+    <div class="form-row">
+      <div>
+        <label class="lbl">Tool</label>
+        <select id="add-tool">
+          <option>Seedance</option><option>Kling</option><option>GoFun</option>
+          <option>Higgsfield</option><option>ComfyUI</option><option>Other</option>
+        </select>
+      </div>
+      <div>
+        <label class="lbl">Shot type</label>
+        <select id="add-shot">
+          <option>Wide</option><option>Close-up</option><option>POV</option>
+          <option>Aerial</option><option>Tracking</option><option>Static</option>
+          <option>Handheld</option><option>Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-section">
+      <label class="lbl">Preview GIF filename</label>
+      <input type="text" id="add-gif" placeholder="e.g. valletta-freefall.gif" oninput="previewGif('add')">
+      <div id="add-gif-hint" class="hint"></div>
+      <img id="add-gif-preview" class="gif-preview" style="display:none" alt="GIF preview">
+    </div>
+    <div class="form-section">
+      <label class="lbl">YouTube URL <span style="color:#282828">(optional)</span></label>
+      <input type="text" id="add-yt" placeholder="https://youtu.be/..." oninput="validateYt('add')">
+      <div id="add-yt-hint" class="hint"></div>
+    </div>
+    <div class="form-section">
+      <label class="lbl">Prompt</label>
+      <textarea id="add-prompt" rows="8" placeholder="Paste your full prompt here..."></textarea>
+    </div>
+    <div class="form-section">
+      <label class="lbl">Reference image description</label>
+      <input type="text" id="add-refimage" placeholder="Describe the reference image used to generate this...">
+    </div>
+    <div class="form-section">
+      <label class="lbl">Notes <span style="color:#282828">(optional)</span></label>
+      <textarea id="add-notes" rows="3" placeholder="Settings, observations, what worked..."></textarea>
+    </div>
+    <div class="action-row">
+      <button class="btn btn-primary" onclick="saveNewPreset()">Save Preset</button>
+      <button class="btn" onclick="showView('library')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="view-edit" class="view">
+  <div class="body-narrow">
+    <div class="form-section">
+      <label class="lbl">Title</label>
+      <input type="text" id="edit-title">
+    </div>
+    <div class="form-row">
+      <div>
+        <label class="lbl">Tool</label>
+        <select id="edit-tool">
+          <option>Seedance</option><option>Kling</option><option>GoFun</option>
+          <option>Higgsfield</option><option>ComfyUI</option><option>Other</option>
+        </select>
+      </div>
+      <div>
+        <label class="lbl">Shot type</label>
+        <select id="edit-shot">
+          <option>Wide</option><option>Close-up</option><option>POV</option>
+          <option>Aerial</option><option>Tracking</option><option>Static</option>
+          <option>Handheld</option><option>Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-section">
+      <label class="lbl">Preview GIF filename</label>
+      <input type="text" id="edit-gif" oninput="previewGif('edit')">
+      <div id="edit-gif-hint" class="hint"></div>
+      <img id="edit-gif-preview" class="gif-preview" style="display:none" alt="GIF preview">
+    </div>
+    <div class="form-section">
+      <label class="lbl">YouTube URL <span style="color:#282828">(optional)</span></label>
+      <input type="text" id="edit-yt" oninput="validateYt('edit')">
+      <div id="edit-yt-hint" class="hint"></div>
+    </div>
+    <div class="form-section">
+      <label class="lbl">Prompt</label>
+      <textarea id="edit-prompt" rows="8"></textarea>
+    </div>
+    <div class="form-section">
+      <label class="lbl">Reference image description</label>
+      <input type="text" id="edit-refimage">
+    </div>
+    <div class="form-section">
+      <label class="lbl">Notes <span style="color:#282828">(optional)</span></label>
+      <textarea id="edit-notes" rows="3"></textarea>
+    </div>
+    <div class="action-row">
+      <button class="btn btn-primary" onclick="saveEditPreset()">Save Changes</button>
+      <button class="btn" onclick="showView('detail')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="view-detail" class="view">
+  <div class="body-narrow" style="max-width:680px">
+    <div id="detail-preview-wrap"></div>
+    <div class="detail-meta" id="detail-meta"></div>
+    <div class="detail-section">
+      <div class="prompt-header">
+        <label class="lbl" style="margin:0">Prompt</label>
+        <button class="btn" style="padding:4px 11px;font-size:10px" onclick="copyText('detail-prompt-text','copy-orig-btn','Copied!')">
+          <span id="copy-orig-btn">Copy</span>
+        </button>
+      </div>
+      <div class="prompt-box" id="detail-prompt-text"></div>
+    </div>
+    <div class="detail-section" id="detail-refimage-wrap"></div>
+    <div class="detail-section" id="detail-notes-wrap"></div>
+    <div class="divider"></div>
+
+    <!-- Modifier -->
+    <div class="modifier">
+      <div class="modifier-title">Prompt Modifier</div>
+      <div id="modifier-api-notice" style="display:none; margin-bottom:14px; padding:10px 12px; background:#0f0f0f; border:1px solid #2e1212; border-radius:6px; font-size:11px; color:#7a3030; line-height:1.6;">
+        API key required to use this feature.<br>
+        <a href="#" onclick="showView('settings'); return false;" style="color:#cc5555; text-decoration:none;">→ Add your Anthropic API key in Settings</a>
+      </div>
+      <div id="modifier-body">
+        <div class="chip-row">
+          <div class="chip-row-label">LOCKED</div>
+          <span class="chip chip-locked">camera motion</span>
+          <span class="chip chip-locked">shot structure</span>
+          <span class="chip chip-locked">output format</span>
+          <span class="chip chip-locked">technical parameters</span>
+          <span class="chip chip-locked">aspect ratio</span>
+        </div>
+        <div class="chip-row" style="margin-bottom:16px">
+          <div class="chip-row-label">SWAPPABLE</div>
+          <span class="chip chip-swap">subject</span>
+          <span class="chip chip-swap">environment</span>
+          <span class="chip chip-swap">lighting/mood</span>
+          <span class="chip chip-swap">color palette</span>
+          <span class="chip chip-swap">action/movement</span>
+        </div>
+        <div class="form-section">
+          <label class="lbl">Your new reference image</label>
+          <input type="text" id="mod-refimage" placeholder="Describe your reference image...">
+        </div>
+        <div class="form-section">
+          <label class="lbl">What do you want different?</label>
+          <textarea id="mod-changes" rows="4" placeholder="e.g. Change subject to a surfer, swap environment to tropical ocean at golden hour..."></textarea>
+        </div>
+        <button class="btn btn-primary" id="adapt-btn" onclick="adaptPrompt()">Adapt Prompt →</button>
+        <div id="adapted-result" style="display:none; margin-top:18px">
+          <div class="prompt-header">
+            <label class="lbl" style="margin:0;color:#205020">Adapted prompt</label>
+            <button class="btn" style="padding:4px 11px;font-size:10px" onclick="copyText('adapted-prompt-text','copy-mod-btn','Copied!')">
+              <span id="copy-mod-btn">Copy</span>
+            </button>
+          </div>
+          <div class="prompt-box prompt-box-adapted" id="adapted-prompt-text"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <div class="action-row">
+      <button class="btn" onclick="openEdit()">Edit Preset</button>
+      <button class="btn btn-danger" id="delete-btn" onclick="confirmDelete()">Delete</button>
+      <span id="delete-confirm" style="display:none; align-items:center; gap:8px;">
+        <span style="font-size:11px;color:#bb3333">Sure?</span>
+        <button class="btn btn-danger" onclick="doDelete()">Yes, delete</button>
+        <button class="btn" onclick="cancelDelete()">Cancel</button>
+      </span>
+    </div>
+  </div>
+</div>
+
+<div id="view-settings" class="view">
+  <div class="body-narrow">
+    <div class="settings-panel">
+      <div class="settings-title">Anthropic API Key</div>
+      <p style="font-size:11px;color:#3a3a3a;margin-bottom:12px;line-height:1.6">
+        Required for the Adapt Prompt feature. Get a key at
+        <a href="https://console.anthropic.com" target="_blank" style="color:#555;text-decoration:none">console.anthropic.com</a>.
+        Stored locally in your browser only — never sent anywhere except directly to Anthropic.
+      </p>
+      <div class="api-key-row">
+        <input type="password" id="api-key-input" placeholder="sk-ant-...">
+        <button class="btn btn-primary" onclick="saveApiKey()">Save</button>
+        <button class="btn" onclick="clearApiKey()">Clear</button>
+      </div>
+      <div id="api-key-status" class="api-status hint"></div>
+    </div>
+
+    <div class="settings-panel">
+      <div class="settings-title">Export / Import Presets</div>
+      <p style="font-size:11px;color:#3a3a3a;margin-bottom:12px;line-height:1.6">
+        Download all your presets as a JSON backup, or import from a previous export.
+      </p>
+      <div class="action-row">
+        <button class="btn btn-primary" onclick="exportPresets()">Export JSON</button>
+        <label class="btn" style="cursor:pointer">
+          Import JSON
+          <input type="file" accept=".json" onchange="importPresets(event)" style="display:none;width:auto">
+        </label>
+      </div>
+      <div id="import-status" class="hint" style="margin-top:8px"></div>
+    </div>
+
+    <div class="settings-panel">
+      <div class="settings-title">GitHub GIF Repo</div>
+      <p style="font-size:11px;color:#3a3a3a;line-height:1.6">
+        Upload GIF files to
+        <a href="https://github.com/Gerardosauro/prompt-vault/tree/main/gifs" target="_blank" style="color:#555;text-decoration:none">
+          github.com/Gerardosauro/prompt-vault/tree/main/gifs
+        </a>
+        then enter the filename (e.g. <code style="color:#555">my-video.gif</code>) in the preset form.
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+const GIF_BASE = 'https://cdn.jsdelivr.net/gh/Gerardosauro/prompt-vault@main/gifs/';
+const TOOLS = ['Seedance','Kling','GoFun','Higgsfield','ComfyUI','Other'];
+const TOOL_COLORS = { Seedance:'#1D9E75', Kling:'#7F77DD', GoFun:'#D85A30', Higgsfield:'#BA7517', ComfyUI:'#378ADD', Other:'#888780' };
+
+let allPresets = [];
+let currentPreset = null;
+
+// ── STORAGE (localStorage) ───────────────────────────────────────
+function loadPresets() {
+  try {
+    const raw = localStorage.getItem('pv_presets');
+    allPresets = raw ? JSON.parse(raw) : [];
+  } catch { allPresets = []; }
+}
+
+function persistPresets() {
+  localStorage.setItem('pv_presets', JSON.stringify(allPresets));
+}
+
+// ── API KEY ──────────────────────────────────────────────────────
+function getApiKey() { return localStorage.getItem('pv_api_key') || ''; }
+
+function saveApiKey() {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (!key) return;
+  localStorage.setItem('pv_api_key', key);
+  document.getElementById('api-key-status').textContent = '✓ API key saved';
+  document.getElementById('api-key-status').className = 'api-status hint hint-ok';
+  updateModifierAccess();
+}
+
+function clearApiKey() {
+  localStorage.removeItem('pv_api_key');
+  document.getElementById('api-key-input').value = '';
+  document.getElementById('api-key-status').textContent = 'API key cleared';
+  document.getElementById('api-key-status').className = 'api-status hint hint-err';
+  updateModifierAccess();
+}
+
+function updateModifierAccess() {
+  const hasKey = !!getApiKey();
+  const notice = document.getElementById('modifier-api-notice');
+  const body = document.getElementById('modifier-body');
+  if (notice && body) {
+    notice.style.display = hasKey ? 'none' : 'block';
+    document.getElementById('adapt-btn').disabled = !hasKey;
+    document.getElementById('adapt-btn').style.opacity = hasKey ? '1' : '0.4';
+  }
+}
+
+// ── VIEWS ────────────────────────────────────────────────────────
+function showView(name, subtitle) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  document.getElementById('header-subtitle').textContent = subtitle || name;
+  renderNavBtns(name);
+  if (name === 'library') renderGrid();
+  if (name === 'settings') {
+    const key = getApiKey();
+    const inp = document.getElementById('api-key-input');
+    if (key) { inp.value = key; document.getElementById('api-key-status').textContent = '✓ API key saved'; document.getElementById('api-key-status').className = 'api-status hint hint-ok'; }
+  }
+}
+
+function renderNavBtns(activeView) {
+  const nav = document.getElementById('nav-btns');
+  if (activeView === 'library') {
+    nav.innerHTML = `
+      <button class="btn btn-nav active">Library</button>
+      <button class="btn btn-nav" onclick="openAdd()">+ Add</button>
+      <button class="btn btn-nav" onclick="showView('settings','settings')">Settings</button>`;
+  } else if (activeView === 'add') {
+    nav.innerHTML = `<button class="btn btn-nav" onclick="showView('library')">← Back</button>`;
+  } else if (activeView === 'edit') {
+    nav.innerHTML = `<button class="btn btn-nav" onclick="showView('detail', currentPreset.title)">← Back</button>`;
+  } else if (activeView === 'detail') {
+    const ytId = getYouTubeId(currentPreset?.youtubeUrl);
+    nav.innerHTML = `
+      ${ytId ? `<a class="btn btn-yt" href="${currentPreset.youtubeUrl}" target="_blank">▶ YouTube</a>` : ''}
+      <button class="btn btn-nav" onclick="showView('library')">← Library</button>`;
+  } else if (activeView === 'settings') {
+    nav.innerHTML = `<button class="btn btn-nav" onclick="showView('library')">← Library</button>`;
+  }
+}
+
+// ── UTILS ────────────────────────────────────────────────────────
+function getYouTubeId(url) {
+  if (!url) return null;
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/
+  ];
+  for (const p of patterns) { const m = url.match(p); if (m) return m[1]; }
+  return null;
+}
+
+function getGifUrl(filename) {
+  if (!filename) return null;
+  const f = filename.trim();
+  return f.startsWith('http') ? f : GIF_BASE + f;
+}
+
+function tagHTML(tool) {
+  const color = TOOL_COLORS[tool] || '#888';
+  return `<span class="tag" style="color:${color};border-color:${color}44">${tool}</span>`;
+}
+
+function copyText(sourceId, btnId, label) {
+  const text = document.getElementById(sourceId).textContent;
+  navigator.clipboard.writeText(text);
+  const btn = document.getElementById(btnId);
+  const orig = btn.textContent;
+  btn.textContent = label;
+  setTimeout(() => btn.textContent = orig, 2000);
+}
+
+// ── GRID ─────────────────────────────────────────────────────────
+function filterPresets() { renderGrid(); }
+
+function renderGrid() {
+  const search = document.getElementById('search-input').value.toLowerCase();
+  const tool = document.getElementById('tool-filter').value;
+  const filtered = allPresets.filter(p => {
+    const ms = p.title.toLowerCase().includes(search) || p.prompt.toLowerCase().includes(search);
+    const mt = tool === 'All' || p.tool === tool;
+    return ms && mt;
+  });
+
+  const grid = document.getElementById('preset-grid');
+  const empty = document.getElementById('empty-state');
+  const count = document.getElementById('preset-count');
+
+  if (filtered.length === 0) {
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    count.textContent = '';
+    document.getElementById('empty-label').textContent = allPresets.length === 0 ? 'NO PRESETS YET' : 'NO RESULTS';
+    document.getElementById('empty-sub').textContent = allPresets.length === 0 ? 'Hit + Add to save your first prompt' : '';
+  } else {
+    empty.style.display = 'none';
+    count.textContent = filtered.length + ' PRESET' + (filtered.length !== 1 ? 'S' : '');
+    grid.innerHTML = filtered.map(p => cardHTML(p)).join('');
+  }
+}
+
+function cardHTML(p) {
+  const gifUrl = getGifUrl(p.gifFilename);
+  const ytId = getYouTubeId(p.youtubeUrl);
+  let thumbHTML = '';
+
+  if (gifUrl) {
+    thumbHTML = `
+      <div class="thumb">
+        <img src="${gifUrl}" alt="" onerror="this.style.display='none'">
+        <div class="thumb-badge">GIF</div>
+        ${ytId ? `<a class="thumb-yt" href="${p.youtubeUrl}" target="_blank" onclick="event.stopPropagation()"><span class="thumb-yt-icon">▶</span> YouTube</a>` : ''}
+      </div>`;
+  } else if (ytId) {
+    thumbHTML = `
+      <div class="thumb">
+        <img src="https://img.youtube.com/vi/${ytId}/hqdefault.jpg" alt="" onerror="this.parentElement.innerHTML='<div class=thumb-empty><div class=thumb-empty-icon>▶</div></div>'">
+        <a class="thumb-yt" href="${p.youtubeUrl}" target="_blank" onclick="event.stopPropagation()"><span class="thumb-yt-icon">▶</span> YouTube</a>
+      </div>`;
+  } else {
+    thumbHTML = `<div class="thumb"><div class="thumb-empty"><div class="thumb-empty-icon">▶</div><div class="thumb-empty-label">NO PREVIEW</div></div></div>`;
+  }
+
+  const date = new Date(p.createdAt).toLocaleDateString();
+  return `
+    <div class="card" data-id="${p.id}">
+      ${thumbHTML}
+      <div class="card-body" onclick="openDetail('${p.id}')">
+        <div>${tagHTML(p.tool)}<span class="tag tag-neutral">${p.shotType}</span></div>
+        <div class="card-title">${escHtml(p.title)}</div>
+        <div class="card-snippet">${escHtml(p.prompt)}</div>
+        <div class="card-meta">${date}</div>
+      </div>
+      <div class="card-actions">
+        <button class="btn btn-primary" style="flex:1;padding:7px 0;justify-content:center" onclick="openDetail('${p.id}')">Use Preset</button>
+        ${ytId ? `<a class="btn btn-yt" href="${p.youtubeUrl}" target="_blank" style="padding:7px 12px">▶ YT</a>` : ''}
+      </div>
+    </div>`;
+}
+
+function escHtml(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── ADD ──────────────────────────────────────────────────────────
+function openAdd() {
+  ['add-title','add-gif','add-yt','add-prompt','add-refimage','add-notes'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('add-tool').value = 'Seedance';
+  document.getElementById('add-shot').value = 'Wide';
+  document.getElementById('add-gif-hint').textContent = '';
+  document.getElementById('add-yt-hint').textContent = '';
+  document.getElementById('add-gif-preview').style.display = 'none';
+  showView('add', 'new preset');
+}
+
+function saveNewPreset() {
+  const title = document.getElementById('add-title').value.trim();
+  const prompt = document.getElementById('add-prompt').value.trim();
+  if (!title || !prompt) { alert('Title and Prompt are required.'); return; }
+  const preset = {
+    id: Date.now().toString(),
+    title,
+    tool: document.getElementById('add-tool').value,
+    shotType: document.getElementById('add-shot').value,
+    gifFilename: document.getElementById('add-gif').value.trim(),
+    youtubeUrl: document.getElementById('add-yt').value.trim(),
+    prompt,
+    refImage: document.getElementById('add-refimage').value.trim(),
+    notes: document.getElementById('add-notes').value.trim(),
+    createdAt: new Date().toISOString()
+  };
+  allPresets.unshift(preset);
+  persistPresets();
+  showView('library');
+}
+
+// ── EDIT ─────────────────────────────────────────────────────────
+function openEdit() {
+  const p = currentPreset;
+  document.getElementById('edit-title').value = p.title || '';
+  document.getElementById('edit-tool').value = p.tool || 'Seedance';
+  document.getElementById('edit-shot').value = p.shotType || 'Wide';
+  document.getElementById('edit-gif').value = p.gifFilename || '';
+  document.getElementById('edit-yt').value = p.youtubeUrl || '';
+  document.getElementById('edit-prompt').value = p.prompt || '';
+  document.getElementById('edit-refimage').value = p.refImage || '';
+  document.getElementById('edit-notes').value = p.notes || '';
+  document.getElementById('edit-gif-hint').textContent = '';
+  document.getElementById('edit-yt-hint').textContent = '';
+  const prev = document.getElementById('edit-gif-preview');
+  if (p.gifFilename) { prev.src = getGifUrl(p.gifFilename); prev.style.display = 'block'; } else { prev.style.display = 'none'; }
+  showView('edit', 'edit — ' + p.title);
+}
+
+function saveEditPreset() {
+  const title = document.getElementById('edit-title').value.trim();
+  const prompt = document.getElementById('edit-prompt').value.trim();
+  if (!title || !prompt) { alert('Title and Prompt are required.'); return; }
+  const updated = {
+    ...currentPreset,
+    title,
+    tool: document.getElementById('edit-tool').value,
+    shotType: document.getElementById('edit-shot').value,
+    gifFilename: document.getElementById('edit-gif').value.trim(),
+    youtubeUrl: document.getElementById('edit-yt').value.trim(),
+    prompt,
+    refImage: document.getElementById('edit-refimage').value.trim(),
+    notes: document.getElementById('edit-notes').value.trim(),
+  };
+  allPresets = allPresets.map(p => p.id === updated.id ? updated : p);
+  persistPresets();
+  currentPreset = updated;
+  openDetail(updated.id);
+}
+
+// ── DETAIL ───────────────────────────────────────────────────────
+function openDetail(id) {
+  const p = allPresets.find(x => x.id === id);
+  if (!p) return;
+  currentPreset = p;
+
+  const ytId = getYouTubeId(p.youtubeUrl);
+  const gifUrl = getGifUrl(p.gifFilename);
+
+  // Preview
+  const prevWrap = document.getElementById('detail-preview-wrap');
+  if (gifUrl || ytId) {
+    const imgSrc = gifUrl || `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
+    const imgStyle = gifUrl ? '' : 'opacity:0.6';
+    prevWrap.innerHTML = `
+      <div class="detail-preview">
+        <img src="${imgSrc}" alt="" style="${imgStyle}" onerror="this.style.display='none'">
+        ${ytId ? `<a class="detail-preview-yt" href="${p.youtubeUrl}" target="_blank"><span style="color:#cc3333">▶</span> Watch on YouTube</a>` : ''}
+      </div>`;
+  } else { prevWrap.innerHTML = ''; }
+
+  // Meta
+  document.getElementById('detail-meta').innerHTML = `
+    ${tagHTML(p.tool)}<span class="tag tag-neutral">${p.shotType}</span>
+    <span class="detail-date">${new Date(p.createdAt).toLocaleDateString()}</span>`;
+
+  // Prompt
+  document.getElementById('detail-prompt-text').textContent = p.prompt;
+  document.getElementById('copy-orig-btn').textContent = 'Copy';
+
+  // Ref image
+  const riWrap = document.getElementById('detail-refimage-wrap');
+  riWrap.innerHTML = p.refImage ? `<label class="lbl">Reference image</label><div class="prompt-box" style="font-size:11px">${escHtml(p.refImage)}</div>` : '';
+
+  // Notes
+  const notesWrap = document.getElementById('detail-notes-wrap');
+  notesWrap.innerHTML = p.notes ? `<label class="lbl">Notes</label><div class="prompt-box" style="font-size:11px">${escHtml(p.notes)}</div>` : '';
+
+  // Reset modifier
+  document.getElementById('mod-refimage').value = '';
+  document.getElementById('mod-changes').value = '';
+  document.getElementById('adapted-result').style.display = 'none';
+  document.getElementById('delete-btn').style.display = 'inline-flex';
+  document.getElementById('delete-confirm').style.display = 'none';
+
+  updateModifierAccess();
+  showView('detail', p.title);
+}
+
+// ── DELETE ───────────────────────────────────────────────────────
+function confirmDelete() {
+  document.getElementById('delete-btn').style.display = 'none';
+  document.getElementById('delete-confirm').style.display = 'inline-flex';
+}
+function cancelDelete() {
+  document.getElementById('delete-btn').style.display = 'inline-flex';
+  document.getElementById('delete-confirm').style.display = 'none';
+}
+function doDelete() {
+  allPresets = allPresets.filter(p => p.id !== currentPreset.id);
+  persistPresets();
+  currentPreset = null;
+  showView('library');
+}
+
+// ── ADAPT PROMPT ─────────────────────────────────────────────────
+async function adaptPrompt() {
+  const changes = document.getElementById('mod-changes').value.trim();
+  const refImage = document.getElementById('mod-refimage').value.trim();
+  const apiKey = getApiKey();
+  if (!changes || !apiKey) return;
+
+  const btn = document.getElementById('adapt-btn');
+  btn.innerHTML = '<span class="spinner"></span>Adapting...';
+  btn.disabled = true;
+  document.getElementById('adapted-result').style.display = 'none';
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: `You are a video prompt adapter for AI video generation tools. Modify the given prompt based on the user's new reference image and requested changes.
+
+LOCKED — never change: camera motion type, shot structure and framing logic, output format, aspect ratio, technical parameters, any specific numbers (duration, fps, resolution), overall grammatical structure.
+
+SWAPPABLE — only change what user asks: subject/main character, environment/location/background, lighting mood and color palette, action or movement type, specific visual details tied to the subject.
+
+Rules: Keep exact same prompt structure and length. Only swap what is explicitly requested. Output ONLY the adapted prompt text, no explanation, no preamble.`,
+        messages: [{ role: 'user', content: `ORIGINAL PROMPT:\n${currentPreset.prompt}\n\nNEW REFERENCE IMAGE:\n${refImage || 'Not specified'}\n\nWHAT TO CHANGE:\n${changes}\n\nAdapt the prompt.` }]
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const text = data.content?.map(b => b.text || '').join('') || 'Error generating.';
+    document.getElementById('adapted-prompt-text').textContent = text;
+    document.getElementById('copy-mod-btn').textContent = 'Copy';
+    document.getElementById('adapted-result').style.display = 'block';
+  } catch (e) {
+    document.getElementById('adapted-prompt-text').textContent = 'Error: ' + e.message;
+    document.getElementById('adapted-result').style.display = 'block';
+  }
+
+  btn.innerHTML = 'Adapt Prompt →';
+  btn.disabled = false;
+}
+
+// ── FORM HELPERS ─────────────────────────────────────────────────
+function previewGif(prefix) {
+  const val = document.getElementById(prefix + '-gif').value.trim();
+  const hint = document.getElementById(prefix + '-gif-hint');
+  const img = document.getElementById(prefix + '-gif-preview');
+  if (!val) { hint.textContent = ''; img.style.display = 'none'; return; }
+  const url = getGifUrl(val);
+  hint.textContent = '→ ' + url;
+  hint.className = 'hint hint-ok';
+  img.src = url;
+  img.style.display = 'block';
+  img.onerror = () => { img.style.display = 'none'; hint.textContent = '✗ GIF not found — check filename and make sure it\'s uploaded to GitHub'; hint.className = 'hint hint-err'; };
+  img.onload = () => { hint.className = 'hint hint-ok'; };
+}
+
+function validateYt(prefix) {
+  const val = document.getElementById(prefix + '-yt').value.trim();
+  const hint = document.getElementById(prefix + '-yt-hint');
+  if (!val) { hint.textContent = ''; return; }
+  const id = getYouTubeId(val);
+  hint.textContent = id ? '✓ Valid — ID: ' + id : '✗ Can\'t parse YouTube ID';
+  hint.className = 'hint ' + (id ? 'hint-ok' : 'hint-err');
+}
+
+// ── EXPORT / IMPORT ──────────────────────────────────────────────
+function exportPresets() {
+  const blob = new Blob([JSON.stringify(allPresets, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'prompt-vault-export.json';
+  a.click();
+}
+
+function importPresets(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!Array.isArray(data)) throw new Error('Invalid format');
+      const existing = new Set(allPresets.map(p => p.id));
+      const newOnes = data.filter(p => !existing.has(p.id));
+      allPresets = [...newOnes, ...allPresets];
+      persistPresets();
+      document.getElementById('import-status').textContent = `✓ Imported ${newOnes.length} new presets (${data.length - newOnes.length} duplicates skipped)`;
+      document.getElementById('import-status').className = 'hint hint-ok';
+    } catch(err) {
+      document.getElementById('import-status').textContent = '✗ Import failed: ' + err.message;
+      document.getElementById('import-status').className = 'hint hint-err';
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ── INIT ─────────────────────────────────────────────────────────
+loadPresets();
+showView('library');
+</script>
+</body>
+</html>
