@@ -1,2 +1,2 @@
-# prompt-vault
-Prompt Vault
+# Prompt_Studio
+Prompt studio
