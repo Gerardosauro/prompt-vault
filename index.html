@@ -84,7 +84,7 @@
   .shot-block { background: #0a0a0a; border: 1px solid #1e1e1e; border-radius: 6px; margin-bottom: 10px; overflow: hidden; }
   .shot-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; border-bottom: 1px solid #161616; }
   .shot-label { font-size: 9px; letter-spacing: 0.15em; color: var(--gold-dim); text-transform: uppercase; }
-  .shot-body { padding: 12px 14px; font-size: 12px; line-height: 1.8; color: var(--text-mid); white-space: pre-wrap; word-break: break-word; font-family: inherit; }
+  .shot-body { padding: 12px 14px; font-size: 12px; line-height: 1.8; color: var(--text); white-space: pre-wrap; word-break: break-word; font-family: inherit; }
   .shot-copy-all { margin-top: 12px; }
 
   /* Shot fields in form */
@@ -115,7 +115,7 @@
   .action-row { display: flex; gap: 10px; align-items: center; }
 
   /* Prompt box */
-  .prompt-box { background: var(--bg-panel); border: 1px solid #181818; border-radius: 6px; padding: 13px 15px; font-size: 12px; line-height: 1.8; color: var(--text-mid); white-space: pre-wrap; word-break: break-word; font-family: inherit; }
+  .prompt-box { background: var(--bg-panel); border: 1px solid #181818; border-radius: 6px; padding: 13px 15px; font-size: 12px; line-height: 1.8; color: var(--text); white-space: pre-wrap; word-break: break-word; font-family: inherit; }
   .prompt-box-adapted { border-color: #182018; }
   .prompt-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 7px; }
 
@@ -257,13 +257,20 @@
       <label class="lbl" id="add-prompt-label">Prompt</label>
       <div id="add-shots-container">
         <div class="shot-field" id="add-shot-field-0">
-          <div class="shot-field-label"><span id="add-shot-label-0">Prompt</span></div>
+          <div class="shot-field-label">
+            <span id="add-shot-label-0">Prompt</span>
+            <button class="shot-remove" id="add-shot-remove-0" style="display:none" onclick="removeShotField(0)">✕ Remove</button>
+          </div>
           <textarea id="add-shot-0" rows="6" placeholder="Paste your prompt here..."></textarea>
+          <div id="add-shot-img-wrap-0" style="display:none;margin-top:8px">
+            <div style="font-size:9px;letter-spacing:0.12em;color:var(--gold-dim);text-transform:uppercase;margin-bottom:4px" id="add-shot-img-label-0">@image_1</div>
+            <input type="text" id="add-shot-img-0" placeholder="Describe the reference image for this shot...">
+          </div>
         </div>
       </div>
       <button class="btn" id="add-shot-btn" style="display:none;margin-top:8px;font-size:10px" onclick="addShotField()">+ Add Shot</button>
     </div>
-    <div class="form-section">
+    <div class="form-section" id="add-refimage-wrap">
       <label class="lbl">Reference image description</label>
       <input type="text" id="add-refimage" placeholder="Describe the reference image used to generate this...">
     </div>
@@ -667,7 +674,7 @@ function cardHTML(p) {
           <div class="card-overlay-tags">
             ${tagHTML(p.tool)}<span class="tag tag-neutral">${p.shotType}</span>${seqTag}${authorTag}
           </div>
-          <div class="card-overlay-snippet">${escHtml(p.type === 'sequence' ? (p.shots ? p.shots[0] : '') : (p.prompt || ''))}</div>
+          <div class="card-overlay-snippet">${escHtml(p.type === 'sequence' ? (p.shots ? (p.shots[0].prompt || p.shots[0]) : '') : (p.prompt || ''))}</div>
           <div class="card-overlay-actions">
             <button class="btn btn-primary" style="flex:1;padding:6px 0;justify-content:center" onclick="openDetail('${p.id}')">Use Preset</button>
             ${ytBtn}
@@ -691,7 +698,8 @@ function setAddType(type) {
   document.getElementById('add-type-single').classList.toggle('active', type === 'single');
   document.getElementById('add-type-sequence').classList.toggle('active', type === 'sequence');
   document.getElementById('add-shot-btn').style.display = type === 'sequence' ? 'inline-flex' : 'none';
-  // Update labels
+  // Toggle shared refimage vs per-shot images
+  document.getElementById('add-refimage-wrap').style.display = type === 'sequence' ? 'none' : 'block';
   updateAddShotLabels();
 }
 
@@ -701,6 +709,10 @@ function updateAddShotLabels() {
     if (lbl) lbl.textContent = addType === 'sequence' ? `Shot ${String(i+1).padStart(2,'0')}` : 'Prompt';
     const rem = document.getElementById(`add-shot-remove-${i}`);
     if (rem) rem.style.display = addType === 'sequence' && addShotCount > 1 ? 'inline' : 'none';
+    const imgWrap = document.getElementById(`add-shot-img-wrap-${i}`);
+    if (imgWrap) imgWrap.style.display = addType === 'sequence' ? 'block' : 'none';
+    const imgLbl = document.getElementById(`add-shot-img-label-${i}`);
+    if (imgLbl) imgLbl.textContent = `@image_${i+1}`;
   }
 }
 
@@ -715,7 +727,11 @@ function addShotField() {
       <span id="add-shot-label-${i}">Shot ${String(i+1).padStart(2,'0')}</span>
       <button class="shot-remove" id="add-shot-remove-${i}" onclick="removeShotField(${i})">✕ Remove</button>
     </div>
-    <textarea id="add-shot-${i}" rows="5" placeholder="Paste shot ${i+1} prompt here..."></textarea>`;
+    <textarea id="add-shot-${i}" rows="5" placeholder="Paste shot ${i+1} prompt here..."></textarea>
+    <div id="add-shot-img-wrap-${i}" style="margin-top:8px">
+      <div style="font-size:9px;letter-spacing:0.12em;color:var(--gold-dim);text-transform:uppercase;margin-bottom:4px">@image_${i+1}</div>
+      <input type="text" id="add-shot-img-${i}" placeholder="Describe the reference image for this shot...">
+    </div>`;
   container.appendChild(div);
   addShotCount++;
   updateAddShotLabels();
@@ -744,8 +760,15 @@ function closeAddModal() {
   addShotCount = 1; addType = 'single';
   document.getElementById('add-shots-container').innerHTML = `
     <div class="shot-field" id="add-shot-field-0">
-      <div class="shot-field-label"><span id="add-shot-label-0">Prompt</span></div>
+      <div class="shot-field-label">
+        <span id="add-shot-label-0">Prompt</span>
+        <button class="shot-remove" id="add-shot-remove-0" style="display:none" onclick="removeShotField(0)">✕ Remove</button>
+      </div>
       <textarea id="add-shot-0" rows="6" placeholder="Paste your prompt here..."></textarea>
+      <div id="add-shot-img-wrap-0" style="display:none;margin-top:8px">
+        <div style="font-size:9px;letter-spacing:0.12em;color:var(--gold-dim);text-transform:uppercase;margin-bottom:4px" id="add-shot-img-label-0">@image_1</div>
+        <input type="text" id="add-shot-img-0" placeholder="Describe the reference image for this shot...">
+      </div>
     </div>`;
   setAddType('single');
   showView('add', 'new preset');
@@ -755,7 +778,11 @@ function getAddShots() {
   const shots = [];
   for (let i = 0; i < addShotCount; i++) {
     const el = document.getElementById(`add-shot-${i}`);
-    if (el && el.value.trim()) shots.push(el.value.trim());
+    const imgEl = document.getElementById(`add-shot-img-${i}`);
+    if (el && el.value.trim()) shots.push({
+      prompt: el.value.trim(),
+      refImage: imgEl ? imgEl.value.trim() : ''
+    });
   }
   return shots;
 }
@@ -773,9 +800,9 @@ function saveNewPreset() {
     shotType: document.getElementById('add-shot').value,
     gifFilename: document.getElementById('add-gif').value.trim(),
     youtubeUrl: document.getElementById('add-yt').value.trim(),
-    prompt: isSeq ? null : shots[0],
+    prompt: isSeq ? null : shots[0].prompt,
+    refImage: isSeq ? null : document.getElementById('add-refimage').value.trim(),
     shots: isSeq ? shots : null,
-    refImage: document.getElementById('add-refimage').value.trim(),
     notes: document.getElementById('add-notes').value.trim(),
     author: document.getElementById('add-author').value.trim(),
     createdAt: new Date().toISOString()
@@ -799,15 +826,22 @@ function buildEditShotFields(shots) {
   const container = document.getElementById('edit-shots-container');
   container.innerHTML = '';
   shots.forEach((s, i) => {
+    const promptText = s.prompt || s;
+    const imgText = s.refImage || '';
+    const isSeqMode = editType === 'sequence';
     const div = document.createElement('div');
     div.className = 'shot-field';
     div.id = `edit-shot-field-${i}`;
     div.innerHTML = `
       <div class="shot-field-label">
-        <span>${editType === 'sequence' ? 'Shot ' + String(i+1).padStart(2,'0') : 'Prompt'}</span>
-        ${editType === 'sequence' && shots.length > 1 ? `<button class="shot-remove" onclick="removeEditShotField(${i})">✕ Remove</button>` : ''}
+        <span>${isSeqMode ? 'Shot ' + String(i+1).padStart(2,'0') : 'Prompt'}</span>
+        ${isSeqMode && shots.length > 1 ? `<button class="shot-remove" onclick="removeEditShotField(${i})">✕ Remove</button>` : ''}
       </div>
-      <textarea id="edit-shot-${i}" rows="5">${escHtml(s)}</textarea>`;
+      <textarea id="edit-shot-${i}" rows="5">${escHtml(promptText)}</textarea>
+      <div id="edit-shot-img-wrap-${i}" style="${isSeqMode ? 'display:block' : 'display:none'};margin-top:8px">
+        <div style="font-size:9px;letter-spacing:0.12em;color:var(--gold-dim);text-transform:uppercase;margin-bottom:4px">@image_${i+1}</div>
+        <input type="text" id="edit-shot-img-${i}" placeholder="Describe the reference image for this shot..." value="${escHtml(imgText)}">
+      </div>`;
     container.appendChild(div);
   });
 }
@@ -835,8 +869,12 @@ function removeEditShotField(i) {
 function getEditShots() {
   const container = document.getElementById('edit-shots-container');
   const shots = [];
-  Array.from(container.querySelectorAll('textarea')).forEach(ta => {
-    if (ta.value.trim()) shots.push(ta.value.trim());
+  const textareas = container.querySelectorAll('textarea');
+  textareas.forEach((ta, i) => {
+    if (ta.value.trim()) {
+      const imgEl = document.getElementById(`edit-shot-img-${i}`);
+      shots.push({ prompt: ta.value.trim(), refImage: imgEl ? imgEl.value.trim() : '' });
+    }
   });
   return shots;
 }
@@ -858,7 +896,7 @@ function openEdit() {
   // Set type and shots
   editType = p.type === 'sequence' ? 'sequence' : 'single';
   setEditType(editType);
-  const shots = p.type === 'sequence' ? (p.shots || []) : [p.prompt || ''];
+  const shots = p.type === 'sequence' ? (p.shots || []) : [{ prompt: p.prompt || '', refImage: p.refImage || '' }];
   buildEditShotFields(shots);
   showView('edit', 'edit — ' + p.title);
 }
@@ -876,9 +914,9 @@ function saveEditPreset() {
     shotType: document.getElementById('edit-shot').value,
     gifFilename: document.getElementById('edit-gif').value.trim(),
     youtubeUrl: document.getElementById('edit-yt').value.trim(),
-    prompt: isSeq ? null : shots[0],
+    prompt: isSeq ? null : shots[0].prompt,
+    refImage: isSeq ? null : shots[0].refImage,
     shots: isSeq ? shots : null,
-    refImage: document.getElementById('edit-refimage').value.trim(),
     notes: document.getElementById('edit-notes').value.trim(),
     author: document.getElementById('edit-author').value.trim(),
   };
@@ -953,26 +991,31 @@ function openDetail(id) {
   const isSeq = p.type === 'sequence' && p.shots && p.shots.length > 1;
   const promptsWrap = document.getElementById('detail-prompts-wrap');
   if (isSeq) {
-    const allText = p.shots.join('\n\n---\n\n');
+    const allText = p.shots.map(s => s.prompt || s).join('\n\n---\n\n');
     promptsWrap.innerHTML = `
       <div class="prompt-header">
         <label class="lbl" style="margin:0">Sequence — ${p.shots.length} shots</label>
         <button class="btn" style="padding:4px 11px;font-size:10px" onclick="copyRaw(${JSON.stringify(allText).replace(/'/g,"\\'")},'copy-all-btn','Copied all!')"><span id="copy-all-btn">Copy All</span></button>
       </div>
-      ${p.shots.map((s,i) => `
+      ${p.shots.map((s,i) => {
+        const promptText = s.prompt || s;
+        const imgText = s.refImage || '';
+        return `
         <div class="shot-block">
           <div class="shot-header">
             <span class="shot-label">Shot ${String(i+1).padStart(2,'0')}</span>
-            <button class="btn" style="padding:3px 10px;font-size:9px" onclick="copyRaw(${JSON.stringify(s).replace(/'/g,"\\'")},'copy-shot-${i}','Copied!')"><span id="copy-shot-${i}">Copy</span></button>
+            <button class="btn" style="padding:3px 10px;font-size:9px" onclick="copyRaw(${JSON.stringify(promptText).replace(/'/g,"\\'")},'copy-shot-${i}','Copied!')"><span id="copy-shot-${i}">Copy</span></button>
           </div>
-          <div class="shot-body">${escHtml(s)}</div>
-        </div>`).join('')}`;
+          ${imgText ? `<div style="padding:8px 14px 0;font-size:9px;color:var(--gold-dim);letter-spacing:0.12em;text-transform:uppercase">@image_${i+1} <span style="color:var(--text-dim);font-size:10px;letter-spacing:0;text-transform:none">— ${escHtml(imgText)}</span></div>` : ''}
+          <div class="shot-body">${escHtml(promptText)}</div>
+        </div>`;
+      }).join('')}`;
     // Modifier shot selector
     const sel = document.getElementById('mod-shot-index');
     sel.innerHTML = p.shots.map((s,i) => `<option value="${i}">Shot ${String(i+1).padStart(2,'0')}</option>`).join('');
     document.getElementById('mod-shot-select').style.display = 'block';
   } else {
-    const prompt = p.prompt || (p.shots && p.shots[0]) || '';
+    const prompt = p.prompt || (p.shots && (p.shots[0].prompt || p.shots[0])) || '';
     promptsWrap.innerHTML = `
       <div class="prompt-header">
         <label class="lbl" style="margin:0">Prompt</label>
@@ -1032,7 +1075,9 @@ async function adaptPrompt() {
 
   const isSeq = currentPreset.type === 'sequence' && currentPreset.shots && currentPreset.shots.length > 1;
   const shotIndex = isSeq ? parseInt(document.getElementById('mod-shot-index').value) : 0;
-  const promptToAdapt = isSeq ? currentPreset.shots[shotIndex] : (currentPreset.prompt || currentPreset.shots?.[0] || '');
+  const promptToAdapt = isSeq
+    ? (currentPreset.shots[shotIndex].prompt || currentPreset.shots[shotIndex])
+    : (currentPreset.prompt || currentPreset.shots?.[0]?.prompt || '');
 
   const btn = document.getElementById('adapt-btn');
   btn.innerHTML = '<span class="spinner"></span>Adapting...';
