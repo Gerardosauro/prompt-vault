@@ -1289,6 +1289,11 @@ async function saveToFolder() {
   const btn = document.getElementById('save-btn');
   const status = document.getElementById('save-status');
 
+  if (!isLocal) {
+    alert('↓ Save only works in the local version of this tool.\n\nTo back up your data go to Settings → Export JSON for each section (Library, Projects, Tools).\n\n—\n\nWant to be featured?\nThis tool is growing with the District Zero community. Send your best presets to districtzerovfx@gmail.com and your work will be featured in the public library — credited with your name for everyone to see.');
+    return;
+  }
+
   if (!supportsFileSystem) {
     alert('Your browser does not support direct file saving.\n\nGo to Settings → Export JSON for each section (Library, Projects, Tools) and replace the corresponding .json files in your Prompt_Studio folder manually.\n\nChrome or Edge is recommended for direct saving.');
     return;
