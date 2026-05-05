@@ -283,6 +283,14 @@ textarea { resize: vertical; }
       <div id="import-status" style="font-size:10px;margin-top:6px"></div>
     </div>
     <div class="panel">
+      <div class="panel-title">Export / Import Projects</div>
+      <div class="row">
+        <button class="btn-p" onclick="exportProjectsData()">Export JSON</button>
+        <label class="btn" style="cursor:pointer">Import JSON<input type="file" accept=".json" onchange="importProjectsData(event)" style="display:none;width:auto"></label>
+      </div>
+      <div id="projects-import-status" style="font-size:10px;margin-top:6px"></div>
+    </div>
+    <div class="panel">
       <div class="panel-title">Export / Import Tools</div>
       <div class="row">
         <button class="btn-p" onclick="exportTools()">Export JSON</button>
@@ -302,8 +310,9 @@ const GIF_BASE = isLocal
 const LOGO_URL = isLocal
   ? './DZ_logo_color_transparent_s.png'
   : 'https://cdn.jsdelivr.net/gh/Gerry-Malta/Prompt_Studio@main/DZ_logo_color_transparent_s.png';
-const PRESETS_URL = 'https://cdn.jsdelivr.net/gh/Gerry-Malta/Prompt_Studio@main/prompt-vault-export.json';
-const TOOLS_URL = 'https://cdn.jsdelivr.net/gh/Gerry-Malta/Prompt_Studio@main/tools-export.json';
+const PRESETS_URL = 'https://cdn.jsdelivr.net/gh/Gerry-Malta/Prompt_Studio@main/library.json';
+const PROJECTS_URL = 'https://cdn.jsdelivr.net/gh/Gerry-Malta/Prompt_Studio@main/projects.json';
+const TOOLS_URL = 'https://cdn.jsdelivr.net/gh/Gerry-Malta/Prompt_Studio@main/tools.json';
 const TC = { Seedance:'#1D9E75', Kling:'#7F77DD', ComfyUI:'#378ADD', Other:'#d18d1f' };
 const SHOTS = ['Wide','Close-up','POV','Aerial','Tracking','Static','Handheld','Other'];
 const TOOLS_LIST = ['Seedance','Kling','ComfyUI','Other'];
@@ -873,12 +882,33 @@ function deleteTool() {
 function exportPresets() {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify(allPresets,null,2)],{type:'application/json'}));
-  a.download = 'prompt-vault-export.json'; a.click();
+  a.download = 'library.json'; a.click();
+}
+function exportProjectsData() {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(allProjects,null,2)],{type:'application/json'}));
+  a.download = 'projects.json'; a.click();
+}
+function importProjectsData(e) {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    try {
+      const d = JSON.parse(ev.target.result);
+      if (!Array.isArray(d)) throw new Error('Invalid');
+      const existing = new Set(allProjects.map(p => p.id));
+      const newOnes = d.filter(p => !existing.has(p.id));
+      allProjects = [...newOnes, ...allProjects];
+      saveProjects();
+      document.getElementById('projects-import-status').innerHTML = `<span class="hint-ok">✓ Imported ${newOnes.length} projects</span>`;
+    } catch { document.getElementById('projects-import-status').innerHTML = '<span class="hint-err">✗ Import failed</span>'; }
+  };
+  r.readAsText(f);
 }
 function exportTools() {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify(allTools,null,2)],{type:'application/json'}));
-  a.download = 'tools-export.json'; a.click();
+  a.download = 'tools.json'; a.click();
 }
 function importPresets(e) {
   const f = e.target.files[0]; if (!f) return;
@@ -926,6 +956,21 @@ async function syncFromGitHub() {
       allPresets = [...allPresets, ...newOnes];
       savePresets();
       if (currentView === 'library') renderGrid();
+    }
+  } catch {}
+}
+async function syncProjectsFromGitHub() {
+  try {
+    const res = await fetch(PROJECTS_URL + '?t=' + Date.now());
+    if (!res.ok) return;
+    const remote = await res.json();
+    if (!Array.isArray(remote)) return;
+    const existing = new Set(allProjects.map(p => p.id));
+    const newOnes = remote.filter(p => !existing.has(p.id));
+    if (newOnes.length > 0) {
+      allProjects = [...allProjects, ...newOnes];
+      saveProjects();
+      if (currentView === 'projects') renderProjectsGrid();
     }
   } catch {}
 }
@@ -1320,6 +1365,7 @@ showView('library');
 populateAuthorFilters();
 if (!isLocal) {
   syncFromGitHub();
+  syncProjectsFromGitHub();
   syncToolsFromGitHub();
 }
 </script>
